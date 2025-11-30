@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
 type Node struct {
 	Value int32
@@ -94,4 +97,6 @@ func main() {
 
 	ll.Traverse()
 	fmt.Printf("Size: %d\n", ll.Size())
+
+	fmt.Println("CPU #:  ", runtime.NumCPU())
 }
