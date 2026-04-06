@@ -58,7 +58,7 @@ func main() {
 		for _, jobData := range url {
 			jobQueue <- jobData
 		}
-		close(jobQueue) // signal workers no more jobs
+		close(jobQueue) // signal workers no more jobs. closed for sending
 	}()
 
 	for i := 0; i < len(url); i++ {

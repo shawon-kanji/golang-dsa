@@ -109,8 +109,8 @@ These don't have strict ordering dependencies — fit them in whenever you want 
 
 ## Progress Tracker
 
-- [ ] 1. Worker Pool
-- [ ] 2. Pipeline Pattern
+- [x] 1. Worker Pool
+- [x] 2. Pipeline Pattern
 - [ ] 3. TTL Cache
 - [ ] 4. Retry Engine
 - [ ] 5. TCP Chat Server
