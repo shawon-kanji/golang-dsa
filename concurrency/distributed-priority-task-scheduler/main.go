@@ -101,6 +101,7 @@ func main() {
 	WORKERS := 5
 	taskQueue := make(chan Task)
 	result := make(chan Result, WORKERS)
+	start := time.Now()
 	taskArray := []Task{
 		{ID: "task1", Priority: HIGH, Deadline: 2 * time.Second},
 		{ID: "task2", Priority: MEDIUM, Deadline: 1 * time.Second},
@@ -125,18 +126,19 @@ func main() {
 	}
 
 	wg := sync.WaitGroup{}
+	fmt.Printf("[Scheduler] Started with %d workers and %d queued tasks\n", WORKERS, len(taskArray))
 	for i := range WORKERS {
 		wg.Add(1)
 		go func(i int) {
-			fmt.Println("Worker id", i, "started")
+			fmt.Printf("[Worker-%d] Ready\n", i+1)
 			for task := range taskQueue {
 				ctx, cancel := taskContextWithDeadline(task.Deadline)
 				processingTime := simulatedProcessingDuration(task)
-				fmt.Printf("Worker %d processing task %s (simulated work=%s, deadline=%s)\n", i+1, task.ID, processingTime, task.Deadline)
+				fmt.Printf("[Worker-%d] Executing %s (priority=%s, work=%s, deadline=%s)\n", i+1, task.ID, task.Priority, processingTime, task.Deadline)
 				workDone := time.After(processingTime)
 				select {
 				case <-ctx.Done():
-					fmt.Printf("Worker %d: task %s deadline exceeded\n", i+1, task.ID)
+					fmt.Printf("[Worker-%d] %s TIMEOUT (%v)\n", i+1, task.ID, ctx.Err())
 					result <- Result{
 						TaskID:              task.ID,
 						Output:              fmt.Sprintf("task %s failed due to deadline", task.ID),
@@ -145,6 +147,7 @@ func main() {
 						Error:               fmt.Errorf("task %s failed due to deadline", task.ID),
 					}
 				case <-workDone:
+					fmt.Printf("[Worker-%d] %s completed\n", i+1, task.ID)
 					result <- Result{
 						TaskID:              task.ID,
 						Output:              fmt.Sprintf("result of task %s", task.ID),
@@ -175,28 +178,39 @@ func main() {
 		idx := 0
 		for pq.Len() > 0 {
 			task := heap.Pop(pq).(Task)
-			fmt.Printf("Submitting task %d with priority %s and deadline %s\n", idx, task.Priority, task.Deadline)
+			fmt.Printf("[Scheduler] Submitted #%02d -> %s (priority=%s, deadline=%s)\n", idx+1, task.ID, task.Priority, task.Deadline)
 			taskQueue <- task
 			idx++
 		}
+		fmt.Println("[Scheduler] Submission complete, closing task queue")
 		close(taskQueue)
 	}()
 
 	go func() {
 		wg.Wait()
+		fmt.Println("[Scheduler] All workers drained, closing results channel")
 		close(result)
 	}()
 	success := 0
 	failed := 0
 	for res := range result {
-		fmt.Printf("Task result: Task ID: %s of priority %s returned by worker id : %d\n", res.TaskID, res.Priority, res.processedByWorkerId)
+		status := "OK"
+		if res.Error != nil {
+			status = "FAILED"
+		}
+		fmt.Printf("[Result] %s | task=%s priority=%s worker=%d\n", status, res.TaskID, res.Priority, res.processedByWorkerId+1)
 		if res.Error != nil {
 			failed++
 		} else {
 			success++
 		}
 	}
-	fmt.Printf("Total successful tasks: %d\n", success)
-	fmt.Printf("Total failed tasks: %d\n", failed)
+
+	fmt.Println("\n========== SCHEDULER REPORT ==========")
+	fmt.Printf("Tasks submitted:  %d\n", len(taskArray))
+	fmt.Printf("Tasks completed:  %d\n", success)
+	fmt.Printf("Tasks failed:     %d\n", failed)
+	fmt.Printf("Total duration:   %s\n", time.Since(start).Round(time.Millisecond))
+	fmt.Println("======================================")
 
 }
